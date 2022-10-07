@@ -84,6 +84,7 @@ class StarCraft2Env(MultiAgentEnv):
         reward_sparse=False,
         reward_only_positive=True,
         reward_death_value=10,
+        reward_death=False,
         reward_win=200,
         reward_defeat=0,
         reward_negative_scale=0.5,
@@ -223,6 +224,7 @@ class StarCraft2Env(MultiAgentEnv):
         self.reward_only_positive = reward_only_positive
         self.reward_negative_scale = reward_negative_scale
         self.reward_death_value = reward_death_value
+        self.reward_death = reward_death
         self.reward_win = reward_win
         self.reward_defeat = reward_defeat
         self.reward_scale = reward_scale
@@ -253,9 +255,9 @@ class StarCraft2Env(MultiAgentEnv):
         self.map_type = map_params["map_type"]
         self._unit_types = None
 
-        self.max_reward = (
+        self.max_reward = max(abs(self.reward_win), abs(self.reward_defeat)) if self.reward_sparse and not self.reward_death else (
             self.n_enemies * self.reward_death_value + self.reward_win
-        ) if not self.reward_sparse else 1
+        )
 
         # create lists containing the names of attributes returned in states
         self.ally_state_attr_names = [
@@ -513,16 +515,16 @@ class StarCraft2Env(MultiAgentEnv):
                 self.battles_won += 1
                 self.win_counted = True
                 info["battle_won"] = True
-                if not self.reward_sparse:
-                    reward += self.reward_win
-                else:
-                    reward = 1
+                # if not self.reward_sparse:
+                reward += self.reward_win
+                # else:
+                #     reward = 1
             elif game_end_code == -1 and not self.defeat_counted:
                 self.defeat_counted = True
-                if not self.reward_sparse:
-                    reward += self.reward_defeat
-                else:
-                    reward = -1
+                # if not self.reward_sparse:
+                reward += self.reward_defeat
+                # else:
+                #     reward = -1
 
         elif self._episode_steps >= self.episode_limit:
             # Episode limit reached
@@ -778,7 +780,7 @@ class StarCraft2Env(MultiAgentEnv):
         self.reward_only_positive == False, - (damage dealt to ally units
         + reward_death_value per ally unit killed) * self.reward_negative_scale
         """
-        if self.reward_sparse:
+        if self.reward_sparse and not self.reward_death:
             return 0
 
         reward = 0
@@ -826,7 +828,7 @@ class StarCraft2Env(MultiAgentEnv):
         else:
             reward = delta_enemy + delta_deaths - delta_ally
 
-        return reward
+        return delta_deaths if (self.reward_sparse and self.reward_death) else reward
 
     def get_total_actions(self):
         """Returns the total number of actions an agent could ever take."""
