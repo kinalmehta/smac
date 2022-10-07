@@ -255,7 +255,7 @@ class StarCraft2Env(MultiAgentEnv):
 
         self.max_reward = (
             self.n_enemies * self.reward_death_value + self.reward_win
-        )
+        ) if not self.reward_sparse else 1
 
         # create lists containing the names of attributes returned in states
         self.ally_state_attr_names = [
